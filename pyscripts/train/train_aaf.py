@@ -43,7 +43,7 @@ def get_arguments():
                       help='Whether to updates weights.')
   parser.add_argument('--use-global-status', action='store_true',default=True,
                       help='Whether to updates moving mean and variance.')
-  parser.add_argument('--learning-rate', type=float, default=2.5e-4,
+  parser.add_argument('--learning-rate', type=float, default=1e-4,
                       help='Base learning rate.')
   parser.add_argument('--power', type=float, default=0.9,
                       help='Decay for poly learing rate policy.')
@@ -71,15 +71,15 @@ def get_arguments():
                       help='Lambda for affinity loss at non-edge.')
   # Misc paramters
 
-  parser.add_argument('--restore-from', type=str, default='snapshot_v2/model.ckpt-25000',
+  parser.add_argument('--restore-from', type=str, default='snapshot_v2/model.ckpt-30000',
                       help='Where restore model parameters from.')
   parser.add_argument('--save-pred-every', type=int, default=5000,
                       help='Save summaries and checkpoint every often.')
   parser.add_argument('--update-tb-every', type=int, default=50,
                       help='Update summaries every often.')
-  parser.add_argument('--snapshot-dir', type=str, default='snapshot_v2',
+  parser.add_argument('--snapshot-dir', type=str, default='snapshot_v3',
                       help='Where to save snapshots of the model.')
-  parser.add_argument('--not-restore-classifier', action='store_true',default=True,
+  parser.add_argument('--not-restore-classifier', action='store_true',default=False,
                       help='Whether to not restore classifier layers.')
 
   return parser.parse_args()
@@ -183,7 +183,7 @@ def main():
   restore_var = [
     v for v in tf.global_variables()
       if 'block5' not in v.name and 'mdc' not in v.name
-         and args.not_restore_classifier
+         or not args.not_restore_classifier
   ]
 
   # Sum the losses from output branches.
@@ -341,6 +341,7 @@ def main():
     # Scalar summary for different loss terms.
     seg_loss_summary = tf.summary.scalar('seg_loss', mean_seg_loss)
     aaf_loss_summary = tf.summary.scalar('aaf_loss', mean_aaf_loss)
+    all_loss_summary = tf.summary.scalar('all_loss', reduced_loss)
     total_summary = tf.summary.merge_all()
 
     summary_writer = tf.summary.FileWriter(args.snapshot_dir,

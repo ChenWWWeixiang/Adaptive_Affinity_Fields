@@ -28,9 +28,9 @@ def get_arguments():
     """
     parser = argparse.ArgumentParser(
         description='Inference for Semantic Segmentation')
-    parser.add_argument('--data', type=str, default='/home/data1/U-net/H-DenseUNet/data/myTestingData/test-volume-',
+    parser.add_argument('--data', type=str, default='/home/data1/U-net/H-DenseUNet/data/myTrainingData/volume-',
                         help='/path/to/dataset.')
-    parser.add_argument('--liver_path', type=str, default='/home/data1/U-net/H-DenseUNet/livermask/',
+    parser.add_argument('--liver_path', type=str, default='/home/data1/U-net/H-DenseUNet/data/myTrainingData/segmentation-',
                         help='/path/to/dataset.')
     parser.add_argument('--data-list', type=str, default='',
                         help='/path/to/datalist/file.')
@@ -44,7 +44,7 @@ def get_arguments():
                         help='Index of label to ignore.')
     parser.add_argument('--restore-from', type=str, default='snapshot_v2/model.ckpt-30000',
                         help='Where restore model parameters from.')
-    parser.add_argument('--save_path', type=str, default='outputs/',
+    parser.add_argument('--save_path', type=str, default='outputs_val/',
                         help='/path/to/save/predictions.')
     parser.add_argument('--mean', type=int, default=48,
                         help='/path/to/colormap/file.')
@@ -171,8 +171,9 @@ def main():
 
     # Start queue threads.
     # threads = tf.train.start_queue_runners(coord=coord, sess=sess)
-
-    for id in range(70):
+    dice2=[]
+    dice1=[]
+    for id in range(20):
         print('-' * 30)
         print('preprocessing test data...' + str(id))
         print('-' * 30)
@@ -184,7 +185,8 @@ def main():
         imgs_test = mm
 
         #  load liver mask
-        mask, mask_header = load(args.liver_path + str(id) + '-ori.nii')
+        mask, mask_header = load(args.liver_path + str(id) + '.nii')
+        gt=np.copy(mask)
         mask[mask == 2] = 1
         mask = ndimage.binary_dilation(mask, iterations=1).astype(mask.dtype)
         print('-' * 30)
@@ -271,7 +273,7 @@ def main():
         liver_res[liver_res == label_num] = 1
 
         #  preserve the largest liver
-        mask = ndimage.binary_dilation(mask, iterations=1).astype(mask.dtype)
+        mask = ndimage.binary_dilation(mask, iterations=2).astype(mask.dtype)
         box = []
         [liver_labels, num] = measure.label(mask, return_num=True)
         region = measure.regionprops(liver_labels)
@@ -290,8 +292,21 @@ def main():
         liver_res = ndimage.binary_fill_holes(liver_res).astype(int)
         liver_res[Segmask == 1] = 2
         liver_res = np.array(liver_res, dtype='uint8')
-        save(liver_res, args.save_path + 'test-segmentation-' + str(id) + '.nii', img_test_header)
 
+        tp2 = np.sum((liver_res==gt)*(gt==2)  )
+        p2=np.sum(liver_res==2)
+        t2 = np.sum(liver_res == 2)
+        t=(2*tp2+0.1)/(p2+t2+0.1)
+        print(id,t)
+        dice2.append(t)
+        tp1 = np.sum((liver_res == gt) * (gt == 1))
+        p1=np.sum(liver_res==1)
+        t1 = np.sum(liver_res == 1)
+        dice1.append((2*tp1+0.1)/(p1+t1+0.1))
+        save(liver_res, args.save_path + 'test-segmentation-' + str(id) +'_'+str(t)+ '.nii', img_test_header)
+    dice1=np.mean(dice1)
+    dice2 = np.mean(dice2)
+    print(dice1,dice2)
 
 if __name__ == '__main__':
     main()

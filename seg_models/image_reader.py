@@ -444,7 +444,7 @@ class ImageReader(object):
         tumor = self.label[count]
         minindex = self.minindex_list[count]
         maxindex = self.maxindex_list[count]
-        num = np.random.randint(0, 6)
+        num = np.random.randint(0, 5)
         if num < 3 or (count in liverlist):
             lines = self.liverlines[count]
             numid = self.liveridx[count]
